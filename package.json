@@ -1,0 +1,24 @@
+{
+  "name": "iov-token-distribution",
+  "version": "1.0.0",
+  "description": "iov token distribution",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CarLiveChain/iov-token-distribution.git"
+  },
+  "author": "pinkecoin",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/CarLiveChain/iov-token-distribution/issues"
+  },
+  "homepage": "https://github.com/CarLiveChain/iov-token-distribution#readme",
+  "dependencies": {
+    "bignumber.js": "4.0.2",
+    "fast-csv": "^2.4.1",
+    "web3": "^1.0.0-beta.27"
+  }
+}
