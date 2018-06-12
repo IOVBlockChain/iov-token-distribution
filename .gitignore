@@ -2,3 +2,5 @@
 /scripts/data/*.csv
 /build
 /scripts
+/untitled*
+/.DS_Store
