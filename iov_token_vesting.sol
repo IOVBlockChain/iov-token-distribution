@@ -15,15 +15,15 @@ contract IOVTokenVesting is DSAuth, DSMath {
   event LogNewAllocation(address indexed _recipient, uint256 _totalAllocated);
   event LogIOVClaimed(address indexed _recipient, uint256 _amountClaimed);
 
-  event LogAddVestingAdmin(address whoAdded, address newAdmin);
-  event LogRemoveVestingAdmin(address whoRemoved, address admin);
+  event LogAddVestingAdmin(address whoAdded, address indexed newAdmin);
+  event LogRemoveVestingAdmin(address whoRemoved, address indexed admin);
 
   //Allocation with vesting information
   struct Allocation {
     uint256  start;          // Start time of vesting contract
-    uint256  cliff;          // Duration in seconds of the cliff in which tokens will begin to vest
-    uint256  duration;       // Duration for vesting
-    uint256  totalAllocated; // Total tokens allocated 
+    uint256  cliff;          // cliff time in which tokens will begin to vest
+    uint256  periods;        // Periods for vesting
+    uint256  totalAllocated; // Total tokens allocated
     uint256  amountClaimed;  // Total tokens claimed
   }
 
@@ -78,15 +78,17 @@ contract IOVTokenVesting is DSAuth, DSMath {
   * @param _recipient The recipient of the allocation
   * @param _totalAllocated The total amount of IOV allocated to the receipient (after vesting)
   * @param _start Start time of vesting contract
-  * @param _cliff Duration in seconds of the cliff in which tokens will begin to vest
-  * @param _duration Duration for vesting
+  * @param _cliff cliff time in which tokens will begin to vest
+  * @param _period Periods for vesting
   */
-  function setAllocation(address _recipient, uint256 _totalAllocated, uint256 _start, uint256 _cliff, uint256 _duration) public onlyVestingAdmin {
-    require(beneficiaries[_recipient].totalAllocated == 0 && _totalAllocated > 0);
-    require(_duration > _cliff);
+  function setAllocation(address _recipient, uint256 _totalAllocated, uint256 _start, uint256 _cliff, uint256 _period) public onlyVestingAdmin {
     require(_recipient != address(0));
-    
-    beneficiaries[_recipient] = Allocation(_start, _cliff, _duration, _totalAllocated, 0);
+    require(beneficiaries[_recipient].totalAllocated == 0 && _totalAllocated > 0);
+    require(_start > 0 && _start < 32503680000);
+    require(_cliff >= _start);
+    require(_period > 0);
+
+    beneficiaries[_recipient] = Allocation(_start, _cliff, _period, _totalAllocated, 0);
     emit LogNewAllocation(_recipient, _totalAllocated);
   }
 
@@ -96,11 +98,10 @@ contract IOVTokenVesting is DSAuth, DSMath {
    */
   function transferTokens(address _recipient) public {
     require(beneficiaries[_recipient].amountClaimed < beneficiaries[_recipient].totalAllocated);
-    require(now >= add(beneficiaries[_recipient].start, beneficiaries[_recipient].cliff));
+    require( now >= beneficiaries[_recipient].cliff );
 
     uint256 unreleased = releasableAmount(_recipient);
-
-    require(unreleased > 0);
+    require( unreleased > 0);
 
     IOV.transfer(_recipient, unreleased);
 
@@ -115,20 +116,40 @@ contract IOVTokenVesting is DSAuth, DSMath {
    * @param _recipient The address which is being vested
    */
   function releasableAmount(address _recipient) public view returns (uint256) {
+    require( vestedAmount(_recipient) >= beneficiaries[_recipient].amountClaimed );
+    require( vestedAmount(_recipient) <= beneficiaries[_recipient].totalAllocated );
     return sub( vestedAmount(_recipient), beneficiaries[_recipient].amountClaimed );
   }
 
-  /**
+  // /**
+  //  * @dev Calculates the amount that has already vested.
+  //  * @param _recipient The address which is being vested
+  //  */
+  // function vestedAmount(address _recipient) public view returns (uint256) {
+  //   if( block.timestamp < add(beneficiaries[_recipient].start, beneficiaries[_recipient].cliff) ) {
+  //     return 0;
+  //   } else if( block.timestamp >= add( beneficiaries[_recipient].start, beneficiaries[_recipient].duration) ) {
+  //     return beneficiaries[_recipient].totalAllocated;
+  //   } else {
+  //     return div( mul(beneficiaries[_recipient].totalAllocated, sub(block.timestamp, beneficiaries[_recipient].start)), beneficiaries[_recipient].duration );
+  //   }
+  // }
+
+    /**
    * @dev Calculates the amount that has already vested.
    * @param _recipient The address which is being vested
    */
   function vestedAmount(address _recipient) public view returns (uint256) {
-    if( block.timestamp < add(beneficiaries[_recipient].start, beneficiaries[_recipient].cliff) ) {
+    if( block.timestamp < beneficiaries[_recipient].cliff ) {
       return 0;
-    } else if( block.timestamp >= add( beneficiaries[_recipient].start, beneficiaries[_recipient].duration) ) {
+    }else if( block.timestamp >= add( beneficiaries[_recipient].cliff, (30 days)*beneficiaries[_recipient].periods ) ) {
       return beneficiaries[_recipient].totalAllocated;
-    } else {
-      return div( mul(beneficiaries[_recipient].totalAllocated, sub(block.timestamp, beneficiaries[_recipient].start)), beneficiaries[_recipient].duration );
+    }else {
+      for(uint i = 0; i < beneficiaries[_recipient].periods; i++) {
+        if( block.timestamp >= add( beneficiaries[_recipient].cliff, (30 days)*i ) && block.timestamp < add( beneficiaries[_recipient].cliff, (30 days)*(i+1) ) ) {
+          return div( mul(i, beneficiaries[_recipient].totalAllocated), beneficiaries[_recipient].periods );
+        }
+      }
     }
   }
 }

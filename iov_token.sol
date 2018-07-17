@@ -325,7 +325,7 @@ contract IOVToken is IOVTokenBase(10*10**9*10**8), ContractLock(1527782400) {
     }
 
     function transferFrom(address src, address dst, uint wad) public stoppable isUnlocked returns (bool)
-    {   
+    {
         require(_balances[src] >= wad);
 
         if(!touched[src] && currentAirdropAmount < airdropBSupply) {

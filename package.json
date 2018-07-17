@@ -20,6 +20,7 @@
     "bignumber.js": "4.0.2",
     "fast-csv": "^2.4.1",
     "web3": "^1.0.0-beta.27",
-    "ethereumjs-tx": "1.3.4"
+    "ethereumjs-tx": "1.3.4",
+    "dotenv": "6.0.0"
   }
 }
